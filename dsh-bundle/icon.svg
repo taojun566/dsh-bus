@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- dsh-bus: two windows joined by a mailbox bus -->
+  <rect x="4" y="12" width="22" height="18" rx="3" fill="none" stroke="#5e7ce0" stroke-width="3"/>
+  <rect x="38" y="34" width="22" height="18" rx="3" fill="none" stroke="#5e7ce0" stroke-width="3"/>
+  <path d="M26 21h6a2 2 0 0 1 2 2v18a2 2 0 0 0 2 2h2" fill="none" stroke="#3de08a" stroke-width="3" stroke-linecap="round"/>
+  <path d="M38 43h-6a2 2 0 0 1-2-2V23a2 2 0 0 0-2-2h-2" fill="none" stroke="#f59e0b" stroke-width="3" stroke-linecap="round" transform="translate(10 -10)"/>
+  <path d="M38 45l6-3v6z" fill="#3de08a"/>
+  <path d="M26 19l-6-3v6z" fill="#f59e0b"/>
+  <circle cx="15" cy="21" r="2" fill="#5e7ce0"/>
+  <circle cx="49" cy="43" r="2" fill="#5e7ce0"/>
+</svg>

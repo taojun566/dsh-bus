@@ -1,0 +1,11 @@
+- insert:
+    - id: dshbus-mcp
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: dshbus
+        transport: stdio
+        command: npx
+        args: ['-y', 'dsh-bus@latest']
+        env:
+          PYTHONIOENCODING: utf-8
+        failOnStartupError: true

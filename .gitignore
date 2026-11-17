@@ -1,0 +1,6 @@
+node_modules/
+.bus-e2e/
+__pycache__/
+.pytest_cache/
+*.tgz
+*.pyc

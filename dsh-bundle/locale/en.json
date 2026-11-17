@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "dsh-bus window messaging",
+    "description": "Connects the local dsh-bus file-mailbox MCP server so every window gains bus_send / bus_recv / bus_ack / bus_wait tools for cross-window tasks.",
+    "detail": "docs/DETAIL.md"
+  }
+}

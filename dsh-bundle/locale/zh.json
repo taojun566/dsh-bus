@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "dsh-bus 窗口互通信道",
+    "description": "接入本机 dsh-bus 文件信箱 MCP 服务，让每个窗口获得 bus_send / bus_recv / bus_ack / bus_wait 工具，实现跨窗口任务下发、等待与接力。",
+    "detail": "docs/DETAIL.md"
+  }
+}
