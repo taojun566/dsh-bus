@@ -50,6 +50,13 @@ gh repo view taojun566/dsh-bus --json name,visibility,pushedAt
 - **engines.dsh**: >=0.2.0-alpha.0 <0.3.0（本机 0.2.1-alpha.4 实证线）
 - **版本**: 1.3.0（协议 v1.3，25 pytest+双进程 smoke+双族评审全过）
 
+## 第 4 步（可选）第二收录渠道 dsh-plugin.org
+
+独立市场，收录机制更轻：GitHub 仓库加 `dsh-plugin` topic 即可被收录。
+```powershell
+gh repo edit taojun566/dsh-bus --add-topic dsh-plugin --add-topic dsh --add-topic mcp --add-topic message-bus
+```
+
 ## 回滚
 
 - npm：`npm unpublish dsh-bus@1.3.0`（72h 内允许；之后需 deprecate）
