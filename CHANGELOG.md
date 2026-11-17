@@ -4,6 +4,17 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.4.0] — 2026-11-17
+
+### Changed
+
+- **License: MIT → PolyForm Noncommercial 1.0.0.** Noncommercial use
+  (personal, educational, research) remains free; commercial use now requires
+  a separate license from the author. Copyright line now names taojun566.
+- Versions 1.3.1 and earlier were distributed under MIT and those already
+  distributed copies remain under MIT (license grants are not retroactively
+  revocable); all later releases are PolyForm NC.
+
 ## [1.3.0] — 2026-11-17
 
 First public release. Reference implementation of the L1 file-mailbox bus

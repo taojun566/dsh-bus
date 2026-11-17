@@ -71,6 +71,12 @@ scripts/             smoke consumer example
 
 ## License
 
-MIT © 2026 dsh-bus authors
+[PolyForm Noncommercial 1.0.0](./LICENSE) © 2026 taojun566.
+
+Free for personal, educational, research and other noncommercial use.
+**Commercial use requires a separate license** — open a
+[GitHub issue](https://github.com/taojun566/dsh-bus/issues) to ask.
+Versions 1.3.1 and earlier were distributed under MIT; those copies remain
+under MIT.
 
 [![](https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness)

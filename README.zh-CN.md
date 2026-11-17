@@ -103,6 +103,12 @@ dshbus --from window-b --root <root> ack <消息id> --result '<json>'
 - 掉电持久性未验证（Windows 无目录 fsync）；TOCTOU 检查-使用窗口在册
 - 会话生命周期与接管方判定由上层约定（协议 §6）
 
-协议规范：`../生成产物/跨窗口通信-20261117/L1文件信箱协议规范-v1.3.md`
+## 许可证
+
+[PolyForm Noncommercial 1.0.0](./LICENSE) © 2026 taojun566。
+
+个人、学习、研究及其他**非商业用途免费使用**；**商业使用需另行获得授权**——请开
+[GitHub issue](https://github.com/taojun566/dsh-bus/issues) 洽谈。1.3.1 及更早版本以
+MIT 发布，已发出的那些副本仍按 MIT。
 
 [![](https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness)
