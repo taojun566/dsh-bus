@@ -104,3 +104,5 @@ dshbus --from window-b --root <root> ack <消息id> --result '<json>'
 - 会话生命周期与接管方判定由上层约定（协议 §6）
 
 协议规范：`../生成产物/跨窗口通信-20261117/L1文件信箱协议规范-v1.3.md`
+
+[![](https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness)

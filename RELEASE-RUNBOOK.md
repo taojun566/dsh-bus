@@ -4,17 +4,19 @@
 
 ## 第 0 步前置（用户操作，不可代理）
 
-- [ ] U1. `npm adduser`（或 `npm login`）登录发布账号；`npm whoami` 非空为过
+- [ ] U1. **显式官方源登录**（本机 registry 当前指向 npmmirror 镜像，直接 login 会登错地方）：
+      `npm login --registry https://registry.npmjs.org`；`npm whoami --registry https://registry.npmjs.org` 非空为过
 - [ ] U2. 回复确认：包名 `dsh-bus`、仓库 `taojun566/dsh-bus`(public)、MIT、v1.3.0、市场文案（见 §3 预填）
 
 ## 第 1 步 npm publish（先于一切市场动作——npx 形态依赖 registry 有包）
 
 ```powershell
 # 在 D:\编程树\dsh-bus 执行（包内容=npm pack 预演 13 文件 18.8kB 已核验）
-npm publish --access public
-# 验证（预期 200 + version 1.3.0）：
-npm view dsh-bus version
-npx -y dsh-bus@latest --help   # 或快速冒烟：node launcher 链拉起
+# 必须显式官方源：本机默认 registry=npmmirror 镜像，publish 到镜像会失败
+npm publish --access public --registry https://registry.npmjs.org
+# 验证（预期 200 + version 1.3.0；view 走镜像亦可，镜像同步官方源有分钟级延迟）：
+npm view dsh-bus version --registry https://registry.npmjs.org
+npx -y dsh-bus@latest --help --registry https://registry.npmjs.org   # 或快速冒烟：node launcher 链拉起
 ```
 
 - 若 `dsh-bus` 名被抢注（当前 404 未占）：备选 `dshbus`（已验未占），需改 package.json name+cordis.patch.yml+README 后重走 pack 预演
