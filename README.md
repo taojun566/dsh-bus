@@ -16,23 +16,26 @@ window knows*, *wait for another window*, and *relay work between windows*.
 
 ## Install
 
+No install step required:
+
 ```bash
-pip install dsh-bus            # core CLI (stdlib only, Python >= 3.10)
-pip install "dsh-bus[mcp]"     # + MCP server for native DSH/agent integration
+python dshbus.py --help                # CLI — core bus, stdlib only, Python >= 3.10
+pip install git+https://github.com/taojun566/dsh-bus.git  # optional: installs dshbus / dshbus-mcp commands
+npx -y dsh-bus                         # MCP server over stdio, for DSH/agent hosts
 ```
 
-Or run straight from the repo: `python dshbus.py --help`.
+`dshbus.py` is a single file; copy it next to your script or call it in place.
 
 ## Quick start (two terminals)
 
 ```bash
 # Window A: send a task, then wait for the receipt
-dshbus --from window-a send window-b task '{"job":"analyze","file":"x.py"}' --corr t1
-dshbus --from window-a wait t1 --deadline 600
+python dshbus.py --from window-a send window-b task '{"job":"analyze","file":"x.py"}' --corr t1
+python dshbus.py --from window-a wait t1 --deadline 600
 
 # Window B: claim, do the work, acknowledge with the receipt
-dshbus --from window-b recv
-dshbus --from window-b ack <mid> --result '{"corr":"t1","status":"done"}'
+python dshbus.py --from window-b recv
+python dshbus.py --from window-b ack <mid> --result '{"corr":"t1","status":"done"}'
 ```
 
 Mailboxes live under `~/.dsh/windowbus/<name>/{inbox,claimed,acks,dead,blobs}`.
@@ -56,8 +59,8 @@ relayed a task end-to-end purely through the MCP tool surface).
 | Poison safety | malformed JSON or symlinked/hardlinked payloads go to `dead/` with a reason |
 | Hardening | path-traversal / reserved device names / reparse-point (junction) directories / dangling-surrogate guards |
 
-Full spec: see `CHANGELOG.md` and the test suite (25 pytest locks + dual-OS CI
-matrix + 8×25 concurrent-producer zero-loss lock + real stdio MCP smoke).
+Full spec: see `CHANGELOG.md` and the test suite (25 pytest locks +
+8×25 concurrent-producer zero-loss lock + real stdio MCP smoke).
 
 ## Repo layout
 

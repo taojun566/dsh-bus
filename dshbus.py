@@ -593,5 +593,10 @@ def _cli():
         print(json.dumps(bus.gc()))
 
 
+def main() -> None:
+    """Console-script entry point (pyproject [project.scripts])."""
+    _cli()
+
+
 if __name__ == "__main__":
     _cli()

@@ -4,6 +4,23 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.4.1] — 2026-11-17
+
+### Fixed
+
+- Documentation accuracy audit (every published byte re-verified): removed the
+  PyPI `pip install dsh-bus` promise (no PyPI release exists) — the real
+  install paths are `python dshbus.py` in place, `npx -y dsh-bus` (MCP), or
+  `pip install git+https://github.com/taojun566/dsh-bus.git`.
+- `pyproject.toml` declared `dshbus = "dshbus:main"` but no `main` existed —
+  added `dshbus.main()`; pip-installed `dshbus` command now works.
+- `pyproject.toml` stale metadata: version 1.3.0 → 1.4.1, license reference
+  switched from MIT to the shipped PolyForm NC `LICENSE` file; MIT classifier
+  removed.
+- Removed internal release-runbook file (contained local machine paths) from
+  the public repository; removed dead references to non-shipped internal
+  docs; corrected an overstated "dual-OS CI matrix" claim.
+
 ## [1.4.0] — 2026-11-17
 
 ### Changed

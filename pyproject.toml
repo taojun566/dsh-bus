@@ -4,17 +4,16 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dsh-bus"
-version = "1.3.0"
+version = "1.4.1"
 description = "Cross-window file-mailbox bus for DSH (and any process): send tasks, wait for receipts, relay work between agent sessions. Zero-dependency core."
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "MIT" }
+license = { file = "LICENSE" }
 authors = [{ name = "dsh-bus authors" }]
 keywords = ["dsh", "agent", "ipc", "message-bus", "file-mailbox", "mcp", "cross-window"]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
-  "License :: OSI Approved :: MIT License",
   "Operating System :: Microsoft :: Windows",
   "Operating System :: POSIX :: Linux",
   "Programming Language :: Python :: 3",

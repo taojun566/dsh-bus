@@ -39,7 +39,7 @@ python dshbus.py gc                 # 清理 tmp / 过期 ack / 无引用 blob
 | 公共队列 | 多个 worker 竞争同一信箱 `recv()` | link-claim 同名墓碑，恰一赢家 |
 | 广播 | 循环 `send` 到每个信箱 | 每接收者一份副本 |
 
-## 可靠性规则（实测背书，见 最大强度测试报告-20261117.md）
+## 可靠性规则（实测背书）
 
 - **原子提交**：tmp + fsync + `os.replace`；生产者崩溃只留 tmp，不污染 committed
 - **claim = `os.link` 争抢**（Windows 上 rename 有内核级双赢竞态，link 输家必得
@@ -73,15 +73,15 @@ python -X utf8 scripts/smoke_e2e.py         # 真实双进程 E2E（10/10 无丢
 
 ```powershell
 # 窗口 A（发起方）：发任务 + 等回执
-dshbus --from window-a --root <root> send window-b task '<json>' --corr job-1
-dshbus --from window-a --root <root> wait job-1 --deadline 300
+python dshbus.py --from window-a --root <root> send window-b task '<json>' --corr job-1
+python dshbus.py --from window-a --root <root> wait job-1 --deadline 300
 
 # 窗口 B（消费方）：循环 recv → 处理 → ack
-dshbus --from window-b --root <root> recv --block --timeout 120 --limit 10
-dshbus --from window-b --root <root> ack <消息id> --result '<json>'
+python dshbus.py --from window-b --root <root> recv --block --timeout 120 --limit 10
+python dshbus.py --from window-b --root <root> ack <消息id> --result '<json>'
 ```
 
-实测纪律（2026-11-17 双 DSH 会话接力 E2E，见 `E2E-DSH-INTERSECTION.md`）：
+实测纪律（2026-11-17 双会话接力 E2E）：
 
 - **复杂 JSON 参数走临时脚本**：pwsh 内联 JSON 会被转义撕裂；且
   PowerShell→原生程序传参会**剥掉内层双引号**（`--result '{"corr":…}'`
@@ -92,7 +92,7 @@ dshbus --from window-b --root <root> ack <消息id> --result '<json>'
   推理开销远大于进程直跑）；超时返回 null ≠ 失败，回执可能后到，
   先 `status` + 查 `acks/` 再定论。
 - 固定 `--from <窗口名>`，否则落到 `win-<pid>` 缺省信箱造成孤儿信箱。
-- 真实活证：本仓 `.bus-e2e/` 保留现场（6 份 ack + _metrics.jsonl），
+- 真实活证：开发期 `.bus-e2e/` 保留现场（6 份 ack + _metrics.jsonl），
   两窗口独立报告交叉对账一致（A 侧 ack 文件 vs B 侧收尾报告）。
 
 ## 已知边界（投产前清单，不阻塞窗口间日常使用）

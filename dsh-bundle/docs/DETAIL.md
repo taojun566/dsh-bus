@@ -32,6 +32,6 @@ a local file-mailbox bus (`~/.dsh/windowbus/`):
 
 The bundle launches the MCP server through `npx -y dsh-bus@latest`, a tiny Node
 launcher that spawns a Python ≥ 3.10 interpreter (probed automatically:
-`DSHBUS_PYTHON` → `python3` → `python` → `py -3`; stdlib only). Alternative
-install: `pip install dsh-bus[mcp]` and point your MCP config at the
-`dshbus-mcp` console script.
+`DSHBUS_PYTHON` → `python3` → `python` → `py -3`; stdlib only). Alternative:
+`pip install git+https://github.com/taojun566/dsh-bus.git` installs the
+`dshbus` CLI and the `dshbus-mcp` console scripts.
