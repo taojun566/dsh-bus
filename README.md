@@ -40,6 +40,24 @@ python dshbus.py --from window-b ack <mid> --result '{"corr":"t1","status":"done
 
 Mailboxes live under `~/.dsh/windowbus/<name>/{inbox,claimed,acks,dead,blobs}`.
 
+## Event-driven waiting: `watch` (new in 1.5.0)
+
+`recv --block` polls; `watch` doesn't. It blocks on OS-native file events and
+exits the moment anything lands anywhere in the bus tree — the wake-up
+primitive for orchestrators and wrapper jobs:
+
+```bash
+python dshbus.py watch --timeout 0                        # until any bus event
+python dshbus.py watch --quiet-file ../other-session.log --quiet-min 20
+# → {"trigger":"bus-event"} | {"trigger":"quiet",...} | {"trigger":"gone",...} | {"trigger":"timeout",...}
+```
+
+Backends: `FindFirstChangeNotification` (Windows) · `inotify` (Linux) ·
+`kqueue` (macOS/BSD) — all pure stdlib. The optional dead-man switch fires
+when a watched file has been quiet ≥ N minutes or disappears; the tick timer
+only re-evaluates that predicate, it never schedules work. `DSH_BUS_ROOT` now
+sets the default bus root for the whole CLI.
+
 ## MCP server (native DSH integration)
 
 `dshbus-mcp` (or `python dshbus_mcp.py`) speaks MCP over stdio and exposes six
@@ -59,7 +77,7 @@ relayed a task end-to-end purely through the MCP tool surface).
 | Poison safety | malformed JSON or symlinked/hardlinked payloads go to `dead/` with a reason |
 | Hardening | path-traversal / reserved device names / reparse-point (junction) directories / dangling-surrogate guards |
 
-Full spec: see `CHANGELOG.md` and the test suite (25 pytest locks +
+Full spec: see `CHANGELOG.md` and the test suite (30 pytest locks +
 8×25 concurrent-producer zero-loss lock + real stdio MCP smoke).
 
 ## Repo layout

@@ -1,6 +1,6 @@
 {
   "name": "dsh-bus",
-  "version": "1.4.2",
+  "version": "1.5.0",
   "description": "Cross-window file-mailbox bus for DSH (and any process): send tasks, wait for receipts, relay work between agent sessions. Zero-dependency core, exactly-once claims, at-least-once delivery.",
   "license": "PolyForm-Noncommercial-1.0.0",
   "repository": {

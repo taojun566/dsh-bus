@@ -50,4 +50,5 @@ dshbus --from window-b --root .bus-e2e recv --block --timeout 120 --limit 3
 dshbus --from window-b --root .bus-e2e ack <消息id> --result '{"corr":"…","answer":"…"}'
 ```
 
-现场快照保留于 `.bus-e2e/`（含 6 份 ack 与 _metrics.jsonl）。
+现场快照曾保留于开发期 `.bus-e2e/`（含 6 份 ack 与 _metrics.jsonl）；
+1.5.0 起已随仓库清理移除，本记录即为验证凭据。

@@ -13,6 +13,8 @@ dshbus — DSH 跨窗口文件信箱总线（L1 协议规范 v1.3 参考实现�
   python dshbus.py status
   python dshbus.py recover [--ttl S] [--from ME]
   python dshbus.py gc
+  python dshbus.py watch [--timeout S] [--quiet-file F --quiet-min N]
+                          （事件驱动阻塞等待：OS 原生文件事件零轮询；可选死 man 静默判据）
 
 协议（v1.3）：at-least-once 投递 + 处理方幂等（按 id 去重副作用）+ 无序投递。
 claim = os.link 同名争抢（Windows rename 双赢竞态的正解，实测背书）。
@@ -32,7 +34,7 @@ import time
 import unicodedata
 from pathlib import Path
 
-__version__ = "1.3.0"
+__version__ = "1.5.0"
 
 # ---------------------------------------------------------------- 常量与布局
 
@@ -45,6 +47,7 @@ MAX_RETRIES = 3           # DLQ：同一消息重投递 3 次仍崩溃 → dead/
 GC_TMP_S = 3600.0         # .tmp 残留清理阈值
 GC_ACK_S = 7 * 86400.0    # acked 留痕保留窗
 POLL_S = 0.1              # recv --block / wait 轮询周期
+WATCH_TICK_S = 5.0        # watch 静默隙长度（仅复核死 man 判据与补扫目录，非工作触发）
 
 FILE_ATTRIBUTE_REPARSE_POINT = 0x400  # junction/symlink 目录标记（Windows）
 
@@ -507,12 +510,190 @@ def _mtime(p: Path) -> float:
         return 0.0
 
 
+# ---------------------------------------------------------------- watch（事件驱动阻塞等待）
+
+class _WinFcnWatch:
+    """Windows：FindFirstChangeNotification 子树监听（纯 ctypes，原生事件）。"""
+
+    def __init__(self, root: Path):
+        import ctypes
+        from ctypes import wintypes
+        self._k32 = ctypes.windll.kernel32
+        self._k32.FindFirstChangeNotificationW.argtypes = [
+            wintypes.LPCWSTR, wintypes.BOOL, wintypes.DWORD]
+        self._k32.FindFirstChangeNotificationW.restype = wintypes.HANDLE
+        self._k32.WaitForSingleObject.argtypes = [wintypes.HANDLE, wintypes.DWORD]
+        self._k32.WaitForSingleObject.restype = wintypes.DWORD
+        self._k32.FindCloseChangeNotification.argtypes = [wintypes.HANDLE]
+        self._k32.FindCloseChangeNotification.restype = wintypes.BOOL
+        self._root = str(root)
+
+    def wait(self, tick_s: float) -> bool:
+        FILE_NAME, DIR_NAME, LAST_WRITE = 0x1, 0x2, 0x10
+        h = self._k32.FindFirstChangeNotificationW(
+            self._root, True, FILE_NAME | DIR_NAME | LAST_WRITE)
+        if not h or h in (-1, 2 ** 64 - 1):
+            raise OSError("FindFirstChangeNotificationW failed")
+        try:
+            rc = self._k32.WaitForSingleObject(h, int(tick_s * 1000))
+            if rc == 0:            # WAIT_OBJECT_0：子树内有变更
+                return True
+            if rc == 258:          # WAIT_TIMEOUT：静默隙
+                return False
+            raise OSError(f"WaitForSingleObject rc={rc}")
+        finally:
+            self._k32.FindCloseChangeNotification(h)
+
+    def rescan(self):              # 子树监听原生覆盖新目录，无需补
+        pass
+
+
+class _InotifyWatch:
+    """Linux：inotify（ctypes 直调，事件到达即返回）。"""
+
+    _MASK = 0x100 | 0x80 | 0x2 | 0x200   # IN_CREATE|IN_MOVED_TO|IN_MODIFY|IN_DELETE
+
+    def __init__(self, root: Path):
+        import ctypes
+        self._libc = ctypes.CDLL(None, use_errno=True)
+        self._libc.inotify_init.restype = ctypes.c_int
+        self._libc.inotify_add_watch.argtypes = [
+            ctypes.c_int, ctypes.c_char_p, ctypes.c_uint32]
+        self._libc.inotify_add_watch.restype = ctypes.c_int
+        self.root = root
+        self.fd = self._libc.inotify_init()
+        if self.fd < 0:
+            raise OSError("inotify_init failed")
+        self._wds: set = set()
+        self.rescan()
+
+    def rescan(self):
+        stack = [self.root]
+        while stack:
+            d = stack.pop()
+            wd = self._libc.inotify_add_watch(self.fd, os.fsencode(str(d)), self._MASK)
+            if wd > 0:
+                self._wds.add(wd)
+            try:
+                for name in os.listdir(d):
+                    p = d / name
+                    if p.is_dir() and not p.is_symlink():
+                        stack.append(p)
+            except OSError:
+                pass
+
+    def wait(self, tick_s: float) -> bool:
+        import select
+        r, _, _ = select.select([self.fd], [], [], tick_s)
+        if not r:
+            return False
+        try:
+            os.read(self.fd, 65536)   # 排干事件（本工具一次性触发即退出）
+        except OSError:
+            pass
+        return True
+
+
+class _KqueueWatch:
+    """macOS/BSD：kqueue EVFILT_VNODE（select 模块内建，无 ctypes）。"""
+
+    def __init__(self, root: Path):
+        import select
+        self._select = select
+        self.kq = select.kqueue()
+        self.root = root
+        self._fds: set = set()
+        self.rescan()
+
+    def rescan(self):
+        kevs = []
+        stack = [self.root]
+        while stack:
+            d = stack.pop()
+            try:
+                fd = os.open(str(d), os.O_RDONLY)
+            except OSError:
+                continue
+            self._fds.add(fd)
+            kevs.append((fd, self._select.KQ_FILTER_VNODE, self._select.KQ_EV_ADD,
+                         self._select.KQ_NOTE_WRITE | self._select.KQ_NOTE_EXTEND
+                         | self._select.KQ_NOTE_DELETE))
+            try:
+                for name in os.listdir(d):
+                    p = d / name
+                    if p.is_dir() and not p.is_symlink():
+                        stack.append(p)
+            except OSError:
+                pass
+        if kevs:
+            self.kq.control(kevs, 0, 0)
+
+    def wait(self, tick_s: float) -> bool:
+        try:
+            evs = self.kq.control(None, 1, tick_s)
+        except OSError:
+            return False
+        return bool(evs)
+
+
+def _make_watch(root: Path):
+    if sys.platform == "win32":
+        return _WinFcnWatch(root)
+    if sys.platform == "linux":
+        return _InotifyWatch(root)
+    import select
+    if hasattr(select, "kqueue"):
+        return _KqueueWatch(root)
+    raise OSError(f"watch unsupported on {sys.platform!r} "
+                  "(supported: Windows / Linux / macOS·BSD)")
+
+
+def cli_watch(root, timeout_s: float, quiet_file, quiet_min: float):
+    """事件驱动阻塞等待。触发即打印单行 JSON 退出：
+      {"trigger":"bus-event"}    总线树出现任何文件事件（消息/回执/认领落地）
+      {"trigger":"quiet",...}    死 man 判据：quiet-file 静默 ≥ quiet_min 分钟
+      {"trigger":"gone",...}     quiet_file 消失（进程终止/文件被移走）
+      {"trigger":"timeout",...}  总超时（timeout=0 表示不限）
+    静默隙定时器只复核判据与补扫目录，不触发任何工作。"""
+    root = Path(root)
+    root.mkdir(parents=True, exist_ok=True)
+    w = _make_watch(root)
+    qpath = Path(quiet_file) if quiet_file else None
+    if qpath is not None and not quiet_min:
+        sys.exit("--quiet-file 需要 --quiet-min > 0")
+    start = time.time()
+    while True:
+        elapsed = time.time() - start
+        if timeout_s and elapsed >= timeout_s:
+            print(json.dumps({"trigger": "timeout", "elapsed": round(elapsed, 3)}))
+            return
+        tick = WATCH_TICK_S
+        if timeout_s:
+            tick = min(tick, max(timeout_s - elapsed, 0.05))
+        if w.wait(tick):
+            time.sleep(0.25)     # 让连发写落定（原子提交 tmp→replace 成对到达）
+            elapsed = time.time() - start
+            print(json.dumps({"trigger": "bus-event", "elapsed": round(elapsed, 3)}))
+            return
+        w.rescan()               # 静默隙补扫新信箱目录
+        if qpath is not None:
+            st = _win_lstat(qpath)
+            if st is None:
+                print(json.dumps({"trigger": "gone", "quiet_file": str(qpath)}))
+                return
+            if quiet_min and (time.time() - st.st_mtime) >= quiet_min * 60:
+                print(json.dumps({"trigger": "quiet", "quiet_file": str(qpath),
+                                  "quiet_min": quiet_min,
+                                  "elapsed": round(time.time() - start, 3)}))
+                return
+
+
 # ---------------------------------------------------------------- CLI
 
 def _cli():
     ap = argparse.ArgumentParser(prog="dshbus", description="DSH 跨窗口文件信箱总线 v" + __version__)
     ap.add_argument("--from", dest="me", default=None, help="本窗口名（默认环境 DSH_BUS_NAME 或 hostname-pid）")
-    ap.add_argument("--root", default=None, help="总线根目录（默认 ~/.dsh/windowbus）")
+    ap.add_argument("--root", default=None, help="总线根目录（默认环境 DSH_BUS_ROOT 或 ~/.dsh/windowbus）")
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     p = sub.add_parser("send", help="发送消息")
@@ -539,9 +720,23 @@ def _cli():
     p.add_argument("--ttl", type=float, default=LEASE_TTL_S)
     p = sub.add_parser("gc", help="垃圾回收")
 
+    p = sub.add_parser("watch", help="事件驱动阻塞等待（OS 原生文件事件，零轮询）")
+    p.add_argument("--timeout", type=float, default=0, help="总超时秒（0=不限）")
+    p.add_argument("--quiet-file", default=None,
+                   help="死 man 判据文件（其静默≥quiet-min 分钟触发）")
+    p.add_argument("--quiet-min", type=float, default=0, help="静默分钟数")
+
     a = ap.parse_args()
+    root = a.root or os.environ.get("DSH_BUS_ROOT")
     me = a.me or os.environ.get("DSH_BUS_NAME") or f"win-{os.getpid()}"
-    bus = Bus(me, a.root)
+
+    if a.cmd == "watch":              # 事件等待：零副作用，不建信箱
+        cli_watch(root, a.timeout, a.quiet_file, a.quiet_min)
+        return
+    if a.cmd == "status":             # 纯读面：不建信箱
+        print(json.dumps(Bus.status(root), ensure_ascii=True, indent=2))
+        return
+    bus = Bus(me, root)
 
     if a.cmd == "send":
         try:
@@ -582,9 +777,6 @@ def _cli():
 
     elif a.cmd == "wait":
         print(json.dumps(bus.wait(a.corr, a.deadline), ensure_ascii=True))
-
-    elif a.cmd == "status":
-        print(json.dumps(bus.status(a.root), ensure_ascii=True, indent=2))
 
     elif a.cmd == "recover":
         print(json.dumps(bus.recover(a.ttl)))

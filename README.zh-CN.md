@@ -29,7 +29,24 @@ python dshbus.py --from window-a wait job-1 --deadline 60
 python dshbus.py status                                          # 全信箱对账
 python dshbus.py recover            # 回收过期租约（重投递 / 死信）
 python dshbus.py gc                 # 清理 tmp / 过期 ack / 无引用 blob
+python dshbus.py watch --timeout 0  # 事件驱动阻塞等待（OS 原生文件事件，零轮询）
 ```
+
+## 事件驱动等待：`watch`（1.5.0 新增）
+
+`recv --block` 是轮询；`watch` 是零轮询——直接阻塞在 OS 原生文件事件上，
+总线树任何消息/回执/认领落地的**瞬间**被唤醒，打印一行 JSON 即退出：
+
+```text
+python dshbus.py watch --timeout 0
+python dshbus.py watch --quiet-file <另一会话的活动日志> --quiet-min 20
+# → {"trigger":"bus-event"} | {"trigger":"quiet",...} | {"trigger":"gone",...} | {"trigger":"timeout",...}
+```
+
+后端三系：Windows=FindFirstChangeNotification · Linux=inotify · macOS/BSD=kqueue，
+全部纯标准库零依赖。可选死 man 判据：被观察文件静默 ≥ N 分钟（`quiet`）
+或消失（`gone`）也触发退出——定时隙只复核这一判据，不触发任何工作。
+`DSH_BUS_ROOT` 环境变量现在对整个 CLI 生效（与 `--root` 等价的缺省根）。
 
 ## 三种消息语义（v1.3 §2）
 
@@ -63,7 +80,7 @@ python dshbus.py gc                 # 清理 tmp / 过期 ack / 无引用 blob
 ## 测试
 
 ```text
-python -X utf8 -m pytest tests/ -q          # 25 锁：守卫/三语义/租约/DLQ/幂等/GC/并发/CLI
+python -X utf8 -m pytest tests/ -q          # 30 锁：守卫/三语义/租约/DLQ/幂等/GC/并发/CLI/watch
 python -X utf8 scripts/smoke_e2e.py         # 真实双进程 E2E（10/10 无丢失，ack/wait 闭环）
 ```
 
@@ -92,8 +109,9 @@ python dshbus.py --from window-b --root <root> ack <消息id> --result '<json>'
   推理开销远大于进程直跑）；超时返回 null ≠ 失败，回执可能后到，
   先 `status` + 查 `acks/` 再定论。
 - 固定 `--from <窗口名>`，否则落到 `win-<pid>` 缺省信箱造成孤儿信箱。
-- 真实活证：开发期 `.bus-e2e/` 保留现场（6 份 ack + _metrics.jsonl），
-  两窗口独立报告交叉对账一致（A 侧 ack 文件 vs B 侧收尾报告）。
+- 真实活证：两窗口独立报告交叉对账一致（A 侧 ack 文件 vs B 侧收尾报告）；
+  开发期 `.bus-e2e/` 现场已于 1.5.0 清理出仓库（验证记录见
+  `E2E-DSH-INTERSECTION.md`）。
 
 ## 已知边界（投产前清单，不阻塞窗口间日常使用）
 
