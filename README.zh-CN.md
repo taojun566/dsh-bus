@@ -12,7 +12,7 @@ DSH 多窗口文件信箱总线 —— L1 文件信箱协议 v1.3 的参考实�
 from dshbus import Bus
 
 a = Bus("window-a")                      # 我的信箱名；默认根 ~/.dsh/windowbus/
-mid = a.send("window-b", "task", {"repo": "tree-forge"}, corr="job-1")
+mid = a.send("window-b", "task", {"repo": "my-project", "action": "run-tests"}, corr="job-1")
 res = a.wait(["job-1"], deadline_s=60)   # 等待 window-b 的回执
 
 # —— 窗口 B ——
